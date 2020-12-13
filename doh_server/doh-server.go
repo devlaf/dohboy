@@ -9,22 +9,16 @@ import (
 	"time"
 )
 
-type DOHServerConfig struct {
+type DOHServer struct {
 	HttpServer *http.Server
 	Config     Config
-}
-
-type DOHServer interface {
-	ListenAndBlock() error
-	Stop() error
-	RegisterOnStop(callback func())
 }
 
 func useTLS(config Config) bool {
 	return config.Server.TLSCertPath != ""
 }
 
-func CreateDOHServer(config Config) (DOHServer, error) {
+func CreateDOHServer(config Config) (*DOHServer, error) {
 	router := createRouter()
 
 	tlsConfig := &tls.Config{}
@@ -45,23 +39,23 @@ func CreateDOHServer(config Config) (DOHServer, error) {
 		TLSConfig:    tlsConfig,
 	}
 
-	dsc := &DOHServerConfig{
+	dohs := &DOHServer{
 		HttpServer: &httpServer,
 		Config:     config,
 	}
 
-	return DOHServer(dsc), nil
+	return dohs, nil
 }
 
-func (dsc *DOHServerConfig) ListenAndBlock() error {
-	log.Printf("starting doh server: [%v]", dsc.HttpServer.Addr)
+func (dohs *DOHServer) ListenAndBlock() error {
+	log.Printf("starting doh server: [%v]", dohs.HttpServer.Addr)
 
-	if useTLS(dsc.Config) {
-		if err := dsc.HttpServer.ListenAndServeTLS("", ""); err != http.ErrServerClosed {
+	if useTLS(dohs.Config) {
+		if err := dohs.HttpServer.ListenAndServeTLS("", ""); err != http.ErrServerClosed {
 			return err
 		}
 	} else {
-		if err := dsc.HttpServer.ListenAndServe(); err != http.ErrServerClosed {
+		if err := dohs.HttpServer.ListenAndServe(); err != http.ErrServerClosed {
 			return err
 		}
 	}
@@ -69,11 +63,11 @@ func (dsc *DOHServerConfig) ListenAndBlock() error {
 	return nil
 }
 
-func (dsc *DOHServerConfig) Stop() error {
-	ctx, cancel := context.WithTimeout(context.Background(), dsc.Config.Server.Timeout.Shutdown*time.Second)
+func (dohs *DOHServer) Stop() error {
+	ctx, cancel := context.WithTimeout(context.Background(), dohs.Config.Server.Timeout.Shutdown*time.Second)
 	defer cancel()
 
-	if err := dsc.HttpServer.Shutdown(ctx); err != nil {
+	if err := dohs.HttpServer.Shutdown(ctx); err != nil {
 		log.Printf("error during http sever shutdown: %v\n", err)
 		return err
 	}
@@ -82,6 +76,6 @@ func (dsc *DOHServerConfig) Stop() error {
 	return nil
 }
 
-func (dsc *DOHServerConfig) RegisterOnStop(callback func()) {
-	dsc.HttpServer.RegisterOnShutdown(callback)
+func (dohs *DOHServer) RegisterOnStop(callback func()) {
+	dohs.HttpServer.RegisterOnShutdown(callback)
 }
