@@ -2,4 +2,7 @@ module donut
 
 go 1.15
 
-require gopkg.in/yaml.v2 v2.4.0
+require (
+	golang.org/x/time v0.0.0-20201208040808-7e3f01d25324
+	gopkg.in/yaml.v2 v2.4.0
+)
