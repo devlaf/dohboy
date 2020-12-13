@@ -51,14 +51,14 @@ func toSet(commaSeparated string) set {
 
 func NewRateLimiter(config Config) RateLimiter {
 
-	if config.Server.IPRateLimit.Enabled == false {
+	if config.IPRateLimit.Enabled == false {
 		return &NoopRateLimiter{}
 	}
 
 	return &IPRateLimiter{
-		userKeyWhitelist:     toSet(config.Server.IPRateLimit.KeyWhitelist),
+		userKeyWhitelist:     toSet(config.IPRateLimit.KeyWhitelist),
 		ipLimits:             make(map[string]*rate.Limiter),
-		recoverXTokensPerSec: rate.Limit(config.Server.IPRateLimit.RecoverXTokensPerSec),
-		maxTokens:            config.Server.IPRateLimit.MaxTokens,
+		recoverXTokensPerSec: rate.Limit(config.IPRateLimit.RecoverXTokensPerSec),
+		maxTokens:            config.IPRateLimit.MaxTokens,
 	}
 }

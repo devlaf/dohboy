@@ -22,13 +22,19 @@ type Config struct {
 			Read     time.Duration `yaml:"read" default:"15"`
 			Idle     time.Duration `yaml:"idle" default:"5"`
 		} `yaml:"timeout_sec"`
-		IPRateLimit struct {
-			Enabled              bool   `yaml:"enabled" default:"true"`
-			KeyWhitelist         string `yaml:"key_whitelist"`
-			RecoverXTokensPerSec int    `yaml:"recover_x_tokens_per_sec" default:"5"`
-			MaxTokens            int    `yaml:"max_tokens" default:"25"`
-		} `yaml:"ip_rate_limit"`
 	} `yaml:"server"`
+	IPRateLimit struct {
+		Enabled              bool   `yaml:"enabled" default:"true"`
+		KeyWhitelist         string `yaml:"key_whitelist"`
+		RecoverXTokensPerSec int    `yaml:"recover_x_tokens_per_sec" default:"5"`
+		MaxTokens            int    `yaml:"max_tokens" default:"25"`
+		FetchIPFromHeaders   bool   `yaml:"fetch_ip_from_headers" default: "false"`
+	} `yaml:"ip_rate_limit"`
+	Development struct {
+		TerseResponses bool `yaml:"terse_responses" default:"true"`
+	} `yaml:"development"`
+	Upstream struct {
+	} `yaml:"upstream"`
 }
 
 func parseConfigFile(filepath string) (*Config, error) {
