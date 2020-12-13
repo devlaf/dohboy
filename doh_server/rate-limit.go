@@ -1,6 +1,8 @@
 package doh
 
 import (
+	"strings"
+
 	"golang.org/x/time/rate"
 )
 
@@ -12,12 +14,6 @@ type NoopRateLimiter struct{}
 
 func (n *NoopRateLimiter) Please(a string, b string) bool {
 	return true
-}
-
-type IPRateLimitConfig struct {
-	userKeyWhitelist     set
-	RecoverXTokensPerSec rate.Limit
-	MaxTokens            int
 }
 
 type IPRateLimiter struct {
@@ -43,16 +39,24 @@ func (rl *IPRateLimiter) Please(ip string, userKey string) bool {
 	return limiter.Allow()
 }
 
-func NewRateLimiter(config *IPRateLimitConfig) RateLimiter {
+func toSet(commaSeparated string) set {
+	retval := NewSet()
+	for _, key := range strings.Split(commaSeparated, ",") {
+		retval.Add(strings.TrimSpace(key))
+	}
+	return *retval
+}
 
-	if config == nil {
+func NewRateLimiter(config *Config) RateLimiter {
+
+	if config.Server.IPRateLimit.Enabled == false {
 		return &NoopRateLimiter{}
 	}
 
 	return &IPRateLimiter{
-		userKeyWhitelist:     config.userKeyWhitelist,
+		userKeyWhitelist:     toSet(config.Server.IPRateLimit.KeyWhitelist),
 		ipLimits:             make(map[string]*rate.Limiter),
-		recoverXTokensPerSec: config.RecoverXTokensPerSec,
-		maxTokens:            config.MaxTokens,
+		recoverXTokensPerSec: rate.Limit(config.Server.IPRateLimit.RecoverXTokensPerSec),
+		maxTokens:            config.Server.IPRateLimit.MaxTokens,
 	}
 }

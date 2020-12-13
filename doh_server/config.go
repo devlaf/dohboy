@@ -6,27 +6,35 @@ import (
 	"os"
 	"time"
 
+	"github.com/creasty/defaults"
 	"gopkg.in/yaml.v2"
 )
 
 type Config struct {
 	Server struct {
-		Host        string `yaml:"host"`
-		Port        string `yaml:"port"`
+		Host        string `yaml:"host" default:"127.0.0.1"`
+		Port        string `yaml:"port" default:"8080"`
 		TLSCertPath string `yaml:"tls_cert_filepath`
 		TLSKeyPath  string `yaml:"tls_key_filepath`
 		Timeout     struct {
-			Shutdown time.Duration `yaml:"shutdown"`
-			Write    time.Duration `yaml:"write"`
-			Read     time.Duration `yaml:"read"`
-			Idle     time.Duration `yaml:"idle"`
+			Shutdown time.Duration `yaml:"shutdown" default:"30"`
+			Write    time.Duration `yaml:"write" default:"10"`
+			Read     time.Duration `yaml:"read" default:"15"`
+			Idle     time.Duration `yaml:"idle" default:"5"`
 		} `yaml:"timeout_sec"`
+		IPRateLimit struct {
+			Enabled              bool   `yaml:"enabled" default:"true"`
+			KeyWhitelist         string `yaml:"key_whitelist"`
+			RecoverXTokensPerSec int    `yaml:"recover_x_tokens_per_sec" default:"5"`
+			MaxTokens            int    `yaml:"max_tokens" default:"25"`
+		} `yaml:"ip_rate_limit"`
 	} `yaml:"server"`
 }
 
 func parseConfigFile(filepath string) (*Config, error) {
 
 	config := &Config{}
+	defaults.Set(config)
 
 	file, err := os.Open(filepath)
 	if err != nil {
