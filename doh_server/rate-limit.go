@@ -5,7 +5,7 @@ import (
 )
 
 type RateLimiter interface {
-	Please(ip string, token string) bool
+	Please(ip string, userKey string) bool
 }
 
 type NoopRateLimiter struct{}
@@ -15,20 +15,20 @@ func (n *NoopRateLimiter) Please(a string, b string) bool {
 }
 
 type IPRateLimitConfig struct {
-	tokenWhitelist set
-	Rate           rate.Limit
-	BucketSize     int
+	userKeyWhitelist     set
+	RecoverXTokensPerSec rate.Limit
+	MaxTokens            int
 }
 
 type IPRateLimiter struct {
-	tokenWhitelist set
-	ipLimits       map[string]*rate.Limiter
-	rate           rate.Limit
-	bucketSize     int
+	userKeyWhitelist     set
+	ipLimits             map[string]*rate.Limiter
+	recoverXTokensPerSec rate.Limit
+	maxTokens            int
 }
 
-func (rl *IPRateLimiter) Please(ip string, token string) bool {
-	if rl.tokenWhitelist.Contains(token) {
+func (rl *IPRateLimiter) Please(ip string, userKey string) bool {
+	if rl.userKeyWhitelist.Contains(userKey) {
 		return true
 	}
 
@@ -36,7 +36,7 @@ func (rl *IPRateLimiter) Please(ip string, token string) bool {
 
 	if !exists {
 		// don't care about the RC here
-		rl.ipLimits[ip] = rate.NewLimiter(rl.rate, rl.bucketSize)
+		rl.ipLimits[ip] = rate.NewLimiter(rl.recoverXTokensPerSec, rl.maxTokens)
 		return true
 	}
 
@@ -50,9 +50,9 @@ func NewRateLimiter(config *IPRateLimitConfig) RateLimiter {
 	}
 
 	return &IPRateLimiter{
-		tokenWhitelist: config.tokenWhitelist,
-		ipLimits:       make(map[string]*rate.Limiter),
-		rate:           config.Rate,
-		bucketSize:     config.BucketSize,
+		userKeyWhitelist:     config.userKeyWhitelist,
+		ipLimits:             make(map[string]*rate.Limiter),
+		recoverXTokensPerSec: config.RecoverXTokensPerSec,
+		maxTokens:            config.MaxTokens,
 	}
 }
