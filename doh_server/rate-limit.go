@@ -5,30 +5,30 @@ import (
 )
 
 type RateLimiter interface {
-	Please(val string) bool
+	Please(ip string, token string) bool
 }
 
 type NoopRateLimiter struct{}
 
-func (n *NoopRateLimiter) Please(whatever string) bool {
+func (n *NoopRateLimiter) Please(a string, b string) bool {
 	return true
 }
 
 type IPRateLimitConfig struct {
-	WhitelistIPs set
-	Rate         rate.Limit
-	BucketSize   int
+	tokenWhitelist set
+	Rate           rate.Limit
+	BucketSize     int
 }
 
 type IPRateLimiter struct {
-	ipWhitelist set
-	ipLimits    map[string]*rate.Limiter
-	rate        rate.Limit
-	bucketSize  int
+	tokenWhitelist set
+	ipLimits       map[string]*rate.Limiter
+	rate           rate.Limit
+	bucketSize     int
 }
 
-func (rl *IPRateLimiter) Please(ip string) bool {
-	if rl.ipWhitelist.Contains(ip) {
+func (rl *IPRateLimiter) Please(ip string, token string) bool {
+	if rl.tokenWhitelist.Contains(token) {
 		return true
 	}
 
@@ -50,9 +50,9 @@ func NewRateLimiter(config *IPRateLimitConfig) RateLimiter {
 	}
 
 	return &IPRateLimiter{
-		ipWhitelist: config.WhitelistIPs,
-		ipLimits:    make(map[string]*rate.Limiter),
-		rate:        config.Rate,
-		bucketSize:  config.BucketSize,
+		tokenWhitelist: config.tokenWhitelist,
+		ipLimits:       make(map[string]*rate.Limiter),
+		rate:           config.Rate,
+		bucketSize:     config.BucketSize,
 	}
 }
