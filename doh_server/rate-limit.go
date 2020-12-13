@@ -41,9 +41,11 @@ func (rl *IPRateLimiter) Please(ip string, userKey string) bool {
 
 func toSet(commaSeparated string) set {
 	retval := NewSet()
+
 	for _, key := range strings.Split(commaSeparated, ",") {
 		retval.Add(strings.TrimSpace(key))
 	}
+
 	return *retval
 }
 

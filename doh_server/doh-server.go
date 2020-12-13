@@ -20,18 +20,6 @@ type DOHServer interface {
 	RegisterOnStop(callback func())
 }
 
-func selectPort(config Config) string {
-	if config.Server.Port != "" {
-		return config.Server.Port
-	}
-
-	if config.Server.TLSCertPath != "" {
-		return "443"
-	} else {
-		return "80"
-	}
-}
-
 func useTLS(config Config) bool {
 	return config.Server.TLSCertPath != ""
 }
@@ -49,7 +37,7 @@ func CreateDOHServer(config Config) (DOHServer, error) {
 	}
 
 	httpServer := http.Server{
-		Addr:         fmt.Sprintf("%v:%v", config.Server.Host, selectPort(config)),
+		Addr:         fmt.Sprintf("%v:%v", config.Server.Host, config.Server.Port),
 		Handler:      router,
 		ReadTimeout:  config.Server.Timeout.Read * time.Second,
 		WriteTimeout: config.Server.Timeout.Write * time.Second,
