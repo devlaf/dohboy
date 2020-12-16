@@ -39,9 +39,10 @@ type Config struct {
 }
 
 type UpstreamConfig struct {
-	NameRegex string `yaml:"name_regex"`
-	UseDOH    bool   `yaml:"use_doh"`
-	Address   string `yaml:"address"`
+	NameRegex string        `yaml:"name_regex"`
+	UseDOH    bool          `yaml:"use_doh" default:"true"`
+	Address   string        `yaml:"address"`
+	Timeout   time.Duration `yaml:"timeout" default:"5"`
 }
 
 func parseConfigFile(filepath string) (*Config, error) {

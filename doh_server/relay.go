@@ -18,6 +18,7 @@ func (relay *Relay) ResolveDNSQuery(requestMsg *dns.Msg) (*dns.Msg, error) {
 		return responseMsg.SetRcodeFormatError(requestMsg), nil
 	}
 
+	// RFC8482
 	if requestMsg.Question[0].Qtype == dns.TypeANY {
 		responseMsg := dns.Msg{}
 		responseMsg.SetReply(requestMsg)
