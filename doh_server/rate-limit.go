@@ -1,6 +1,7 @@
 package doh
 
 import (
+	"net/http"
 	"strings"
 
 	"golang.org/x/time/rate"
@@ -8,6 +9,7 @@ import (
 
 type RateLimiter interface {
 	Please(ip string, userKey string) bool
+	GetIP(request *http.Request) string
 }
 
 type NoopRateLimiter struct{}
@@ -16,11 +18,16 @@ func (n *NoopRateLimiter) Please(a string, b string) bool {
 	return true
 }
 
+func (n *NoopRateLimiter) GetIP(request *http.Request) string {
+	return ""
+}
+
 type IPRateLimiter struct {
 	userKeyWhitelist     set
 	ipLimits             map[string]*rate.Limiter
 	recoverXTokensPerSec rate.Limit
 	maxTokens            int
+	allowIPFromHeader    bool
 }
 
 func (rl *IPRateLimiter) Please(ip string, userKey string) bool {
@@ -37,6 +44,18 @@ func (rl *IPRateLimiter) Please(ip string, userKey string) bool {
 	}
 
 	return limiter.Allow()
+}
+
+func (rl *IPRateLimiter) GetIP(request *http.Request) string {
+	if rl.allowIPFromHeader {
+		if forwarded := request.Header.Get("X-FORWARDED-FOR"); forwarded != "" {
+			return forwarded
+		}
+		if real := request.Header.Get("X-Real-IP"); real != "" {
+			return real
+		}
+	}
+	return request.RemoteAddr
 }
 
 func toSet(commaSeparated string) set {
@@ -60,5 +79,6 @@ func NewRateLimiter(config Config) RateLimiter {
 		ipLimits:             make(map[string]*rate.Limiter),
 		recoverXTokensPerSec: rate.Limit(config.IPRateLimit.RecoverXTokensPerSec),
 		maxTokens:            config.IPRateLimit.MaxTokens,
+		allowIPFromHeader:    config.IPRateLimit.FetchIPFromHeaders,
 	}
 }

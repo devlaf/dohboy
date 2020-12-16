@@ -34,7 +34,14 @@ type Config struct {
 		TerseResponses bool `yaml:"terse_responses" default:"true"`
 	} `yaml:"development"`
 	Upstream struct {
+		Custom []UpstreamConfig `yaml:"custom_upstream" default:"[]"`
 	} `yaml:"upstream"`
+}
+
+type UpstreamConfig struct {
+	NameRegex string `yaml:"name_regex"`
+	UseDOH    bool   `yaml:"use_doh"`
+	Address   string `yaml:"address"`
 }
 
 func parseConfigFile(filepath string) (*Config, error) {

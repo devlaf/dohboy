@@ -11,21 +11,9 @@ import (
 )
 
 type Router struct {
-	rateLimiter       RateLimiter
-	terseResponses    bool
-	fetchIPFromHeader bool
-}
-
-func getIP(request *http.Request, allowIPFromHeader bool) string {
-	if allowIPFromHeader {
-		if forwarded := request.Header.Get("X-FORWARDED-FOR"); forwarded != "" {
-			return forwarded
-		}
-		if real := request.Header.Get("X-Real-IP"); real != "" {
-			return real
-		}
-	}
-	return request.RemoteAddr
+	rateLimiter    RateLimiter
+	relay          *Relay
+	terseResponses bool
 }
 
 func extractDNSWireFormat(request *http.Request) ([]byte, error) {
@@ -62,6 +50,11 @@ func (router *Router) ServeHTTP(response http.ResponseWriter, request *http.Requ
 		return
 	}
 
+	if !router.rateLimiter.Please(router.rateLimiter.GetIP(request), request.URL.Query().Get("token")) {
+		http.Error(response, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+		return
+	}
+
 	if request.Method != http.MethodGet && request.Method != http.MethodPost {
 		http.Error(response, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
@@ -72,12 +65,7 @@ func (router *Router) ServeHTTP(response http.ResponseWriter, request *http.Requ
 		return
 	}
 
-	if !router.rateLimiter.Please(getIP(request, router.fetchIPFromHeader), request.URL.Query().Get("token")) {
-		http.Error(response, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
-		return
-	}
-
-	msg, err := extractDNSMessage(request)
+	requestMsg, err := extractDNSMessage(request)
 	if err != nil {
 		if !router.terseResponses {
 			http.Error(response, fmt.Sprintf("%v: %v", http.StatusText(http.StatusBadRequest), err), http.StatusBadRequest)
@@ -87,16 +75,31 @@ func (router *Router) ServeHTTP(response http.ResponseWriter, request *http.Requ
 		return
 	}
 
-	fmt.Fprintf(response, "%q", msg.Question[0].Name)
+	responseMsg, err := router.relay.ResolveDNSQuery(requestMsg)
+	if err != nil {
+		http.Error(response, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	responseWireFormat, err := responseMsg.Pack()
+	if err != nil {
+		http.Error(response, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	response.Header().Set("Content-Type", "application/dns-message")
+	response.Write(responseWireFormat)
 
 }
 
 func CreateRouter(config Config) *http.ServeMux {
 	rateLimiter := NewRateLimiter(config)
+	relay := NewRelay(config)
+
 	router := &Router{
-		rateLimiter:       rateLimiter,
-		terseResponses:    config.Development.TerseResponses,
-		fetchIPFromHeader: config.IPRateLimit.FetchIPFromHeaders,
+		rateLimiter:    rateLimiter,
+		relay:          relay,
+		terseResponses: config.Development.TerseResponses,
 	}
 
 	mux := http.NewServeMux()
