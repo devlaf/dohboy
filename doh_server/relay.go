@@ -41,12 +41,13 @@ func (relay *Relay) ResolveDNSQuery(requestMsg *dns.Msg) (*dns.Msg, error) {
 }
 
 func NewRelay(config Config) *Relay {
-	upstreamMatrix := make([]*Upstream, 1, len(config.Upstream.Custom)+1)
+	upstreamMatrix := make([]*Upstream, 0, len(config.Upstream.Custom)+1)
 
 	for _, config := range config.Upstream.Custom {
 		us, err := CreateUpstream(config)
 		if err != nil {
-			log.Printf("ERR: Custom upstream regex is bad: [%v]. The upstream won't be included.", config.NameRegex)
+			log.Printf("ERR: Configured upstream for pattern [%v] is bad. The upstream won't be included.", config.NameRegex)
+			log.Printf("ERR: %v", err)
 			continue
 		}
 		upstreamMatrix = append(upstreamMatrix, us)
