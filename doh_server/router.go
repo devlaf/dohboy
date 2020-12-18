@@ -45,51 +45,54 @@ func extractDNSMessage(request *http.Request) (*dns.Msg, error) {
 }
 
 func (router *Router) ServeHTTP(response http.ResponseWriter, request *http.Request) {
+	httpError := func(httpStatusCode int, err error) {
+		if !router.terseResponses && err != nil {
+			http.Error(response, fmt.Sprintf("%v: %v", http.StatusText(httpStatusCode), err), httpStatusCode)
+		} else {
+			http.Error(response, http.StatusText(httpStatusCode), httpStatusCode)
+		}
+	}
+
 	if request.URL.Path != "/dns-query" {
-		http.Error(response, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		httpError(http.StatusNotFound, nil)
 		return
 	}
 
 	if !router.rateLimiter.Please(router.rateLimiter.GetIP(request), request.URL.Query().Get("token")) {
-		http.Error(response, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+		httpError(http.StatusTooManyRequests, nil)
 		return
 	}
 
 	if request.Method != http.MethodGet && request.Method != http.MethodPost {
-		http.Error(response, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		httpError(http.StatusMethodNotAllowed, nil)
 		return
 	}
 
 	if request.Method == http.MethodPost && request.Header.Get("Content-Type") != "application/dns-message" {
-		http.Error(response, http.StatusText(http.StatusUnsupportedMediaType), http.StatusUnsupportedMediaType)
+		httpError(http.StatusUnsupportedMediaType, nil)
 		return
 	}
 
 	requestMsg, err := extractDNSMessage(request)
 	if err != nil {
-		if !router.terseResponses {
-			http.Error(response, fmt.Sprintf("%v: %v", http.StatusText(http.StatusBadRequest), err), http.StatusBadRequest)
-		} else {
-			http.Error(response, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-		}
+		httpError(http.StatusBadRequest, err)
 		return
 	}
 
 	responseMsg, err := router.relay.ResolveDNSQuery(requestMsg)
 	if err != nil {
-		http.Error(response, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		httpError(http.StatusInternalServerError, err)
 		return
 	}
 
 	responseWireFormat, err := responseMsg.Pack()
 	if err != nil {
-		http.Error(response, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		httpError(http.StatusInternalServerError, err)
 		return
 	}
 
 	response.Header().Set("Content-Type", "application/dns-message")
 	response.Write(responseWireFormat)
-
 }
 
 func CreateRouter(config Config) *http.ServeMux {
