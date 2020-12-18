@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/creasty/defaults"
 	"gopkg.in/yaml.v2"
@@ -12,15 +11,15 @@ import (
 
 type Config struct {
 	Server struct {
-		Host        string `yaml:"host" default:"127.0.0.1"`
-		Port        string `yaml:"port" default:"8080"`
-		TLSCertPath string `yaml:"tls_cert_filepath`
-		TLSKeyPath  string `yaml:"tls_key_filepath`
-		Timeout     struct {
-			Shutdown time.Duration `yaml:"shutdown" default:"30"`
-			Write    time.Duration `yaml:"write" default:"10"`
-			Read     time.Duration `yaml:"read" default:"15"`
-			Idle     time.Duration `yaml:"idle" default:"5"`
+		Host          string `yaml:"host" default:"127.0.0.1"`
+		Port          string `yaml:"port" default:"8080"`
+		TLSCertPath   string `yaml:"tls_cert_filepath`
+		TLSKeyPath    string `yaml:"tls_key_filepath`
+		TimeoutMillis struct {
+			Shutdown int64 `yaml:"shutdown" default:"30000"`
+			Write    int64 `yaml:"write" default:"10000"`
+			Read     int64 `yaml:"read" default:"15000"`
+			Idle     int64 `yaml:"idle" default:"5000"`
 		} `yaml:"timeout_sec"`
 	} `yaml:"server"`
 	IPRateLimit struct {
@@ -39,10 +38,10 @@ type Config struct {
 }
 
 type UpstreamConfig struct {
-	NameRegex string        `yaml:"name_regex"`
-	UseDOH    bool          `yaml:"use_doh" default:"true"`
-	Address   string        `yaml:"address"`
-	Timeout   time.Duration `yaml:"timeout" default:"5"`
+	NameRegex     string `yaml:"name_regex"`
+	UseDOH        bool   `yaml:"use_doh" default:"true"`
+	Address       string `yaml:"address"`
+	TimeoutMillis int64  `yaml:"timeout" default:"5000"`
 }
 
 func parseConfigFile(filepath string) (*Config, error) {

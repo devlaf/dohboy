@@ -33,9 +33,9 @@ func CreateDOHServer(config Config) (*DOHServer, error) {
 	httpServer := http.Server{
 		Addr:         fmt.Sprintf("%v:%v", config.Server.Host, config.Server.Port),
 		Handler:      router,
-		ReadTimeout:  config.Server.Timeout.Read * time.Second,
-		WriteTimeout: config.Server.Timeout.Write * time.Second,
-		IdleTimeout:  config.Server.Timeout.Idle * time.Second,
+		ReadTimeout:  time.Duration(config.Server.TimeoutMillis.Read) * time.Millisecond,
+		WriteTimeout: time.Duration(config.Server.TimeoutMillis.Write) * time.Millisecond,
+		IdleTimeout:  time.Duration(config.Server.TimeoutMillis.Idle) * time.Millisecond,
 		TLSConfig:    tlsConfig,
 	}
 
@@ -64,7 +64,8 @@ func (dohs *DOHServer) ListenAndBlock() error {
 }
 
 func (dohs *DOHServer) Stop() error {
-	ctx, cancel := context.WithTimeout(context.Background(), dohs.Config.Server.Timeout.Shutdown*time.Second)
+	timeout := time.Duration(dohs.Config.Server.TimeoutMillis.Shutdown) * time.Millisecond
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	if err := dohs.HttpServer.Shutdown(ctx); err != nil {

@@ -49,16 +49,18 @@ func CreateUpstream(config UpstreamConfig) (*Upstream, error) {
 		regex:   r,
 		useDOH:  config.UseDOH,
 		address: config.Address,
-		timeout: config.Timeout,
+		timeout: time.Duration(config.TimeoutMillis) * time.Millisecond,
 	}, nil
 }
 
 func CreateDefaultUpstream() *Upstream {
 	defaultUpstreamConfig := UpstreamConfig{
-		NameRegex: "*",
-		UseDOH:    true,
-		Address:   "dns.google/dns-query",
-		Timeout:   5,
+		NameRegex: ".*",
+		UseDOH:    false,
+		Address:   "8.8.8.8:53",
+		//UseDOH:  true,
+		//Address: "dns.google/dns-query",
+		TimeoutMillis: 5000,
 	}
 	defaultUpstream, _ := CreateUpstream(defaultUpstreamConfig)
 	return defaultUpstream
