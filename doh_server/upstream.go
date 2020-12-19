@@ -1,6 +1,12 @@
 package doh
 
 import (
+	"context"
+	"encoding/base64"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
 	"regexp"
 	"time"
 
@@ -8,7 +14,7 @@ import (
 )
 
 type Upstream interface {
-	ResolveIfMatched(message *dns.Msg) (bool, *dns.Msg, error) // (was_matched, resp_msg_if_matched, err)
+	ResolveIfMatched(dnsQuery *dns.Msg) (bool, *dns.Msg, error) // (was_matched, resp_msg_if_matched, err)
 }
 
 func CreateUpstream(config UpstreamConfig) (Upstream, error) {
@@ -20,7 +26,7 @@ func CreateUpstream(config UpstreamConfig) (Upstream, error) {
 	}
 
 	if config.UseDOH {
-		return createDnsOverHttpsUpstream(regex, config.Address, timeout), nil
+		return createDnsOverHttpsUpstream(regex, config.Address, timeout, config.HttpTransportConfig)
 	} else {
 		return createTraditionalUpstream(regex, config.Address, timeout), nil
 	}
@@ -41,7 +47,7 @@ func CreateDefaultDnsOverHttpsUpstream() Upstream {
 	defaultUpstreamConfig := UpstreamConfig{
 		NameRegex:     ".*",
 		UseDOH:        true,
-		Address:       "dns.google/dns-query",
+		Address:       "https://dns.google/dns-query",
 		TimeoutMillis: 5000,
 	}
 	defaultUpstream, _ := CreateUpstream(defaultUpstreamConfig)
@@ -74,12 +80,12 @@ func createTraditionalUpstream(regex *regexp.Regexp, address string, timeout tim
 	}
 }
 
-func (upstream *TraditionalUpstream) ResolveIfMatched(message *dns.Msg) (bool, *dns.Msg, error) {
-	if !upstream.regex.MatchString(message.Question[0].Name) {
+func (upstream *TraditionalUpstream) ResolveIfMatched(dnsQuery *dns.Msg) (bool, *dns.Msg, error) {
+	if !upstream.regex.MatchString(dnsQuery.Question[0].Name) {
 		return false, nil, nil
 	}
 
-	udpResp, _, err := upstream.udpClient.Exchange(message, upstream.address)
+	udpResp, _, err := upstream.udpClient.Exchange(dnsQuery, upstream.address)
 	if err != nil {
 		return true, nil, err
 	}
@@ -88,28 +94,88 @@ func (upstream *TraditionalUpstream) ResolveIfMatched(message *dns.Msg) (bool, *
 		return true, udpResp, nil
 	}
 
-	tcpResp, _, err := upstream.tcpClient.Exchange(message, upstream.address)
+	tcpResp, _, err := upstream.tcpClient.Exchange(dnsQuery, upstream.address)
 	return true, tcpResp, err
 }
 
 type DnsOverHttpsUpstream struct {
-	regex   *regexp.Regexp
-	address string
-	timeout time.Duration
+	regex      *regexp.Regexp
+	address    string
+	httpClient *http.Client
 }
 
-func createDnsOverHttpsUpstream(regex *regexp.Regexp, address string, timeout time.Duration) Upstream {
-	return &DnsOverHttpsUpstream{
-		regex:   regex,
-		address: address,
-		timeout: timeout,
+func createDnsOverHttpsUpstream(regex *regexp.Regexp, address string, timeout time.Duration, transportConfig HttpTransportConfig) (Upstream, error) {
+	validUrl, err := url.ParseRequestURI(address)
+	if err != nil {
+		return nil, err
 	}
+
+	if validUrl.Scheme != "https" {
+		return nil, fmt.Errorf("Address scheme for DOH upstream must be [https]. Provided: [%v].", validUrl.Scheme)
+	}
+
+	transport := &http.Transport{
+		MaxConnsPerHost: transportConfig.MaxConnsPerHost,
+		IdleConnTimeout: time.Duration(transportConfig.IdleConnTimeoutMillis) * time.Millisecond,
+	}
+
+	httpClient := &http.Client{
+		Transport: transport,
+		Timeout:   timeout,
+	}
+
+	return &DnsOverHttpsUpstream{
+		regex:      regex,
+		address:    address,
+		httpClient: httpClient,
+	}, nil
 }
 
-func (upstream *DnsOverHttpsUpstream) ResolveIfMatched(message *dns.Msg) (bool, *dns.Msg, error) {
-	if !upstream.regex.MatchString(message.Question[0].Name) {
+func (upstream *DnsOverHttpsUpstream) ResolveIfMatched(dnsQuery *dns.Msg) (bool, *dns.Msg, error) {
+	if !upstream.regex.MatchString(dnsQuery.Question[0].Name) {
 		return false, nil, nil
 	}
 
-	return true, nil, nil
+	wireformat, err := dnsQuery.Pack()
+	if err != nil {
+		return true, nil, err
+	}
+
+	encodedQuery := base64.RawURLEncoding.EncodeToString(wireformat)
+	uri := fmt.Sprintf("%v?dns=%v", upstream.address, encodedQuery)
+
+	requestToUpstream, err := http.NewRequestWithContext(context.Background(), http.MethodGet, uri, nil)
+	if err != nil {
+		return true, nil, err
+	}
+	requestToUpstream.Header.Set("Accept", "application/dns-message")
+
+	responseFromUpstream, err := upstream.httpClient.Do(requestToUpstream)
+	if err != nil {
+		return true, nil, err
+	}
+	defer responseFromUpstream.Body.Close()
+
+	if responseFromUpstream.StatusCode != http.StatusOK {
+		err := fmt.Errorf("HTTP status code returned from upstream was [%v: %v]",
+			responseFromUpstream.StatusCode, http.StatusText(responseFromUpstream.StatusCode))
+		return true, nil, err
+	}
+
+	body, err := ioutil.ReadAll(responseFromUpstream.Body)
+	if err != nil {
+		return true, nil, err
+	}
+
+	dnsResultFromUpstream := new(dns.Msg)
+	if err := dnsResultFromUpstream.Unpack(body); err != nil {
+		return true, nil, err
+	}
+
+	if dnsQuery.Id != dnsResultFromUpstream.Id {
+		err := fmt.Errorf("DNS query ID mismatch: sent=%v received=%v", dnsQuery.Id, dnsResultFromUpstream.Id)
+		return true, nil, err
+	}
+
+	return true, dnsResultFromUpstream, nil
 }

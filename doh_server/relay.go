@@ -50,7 +50,7 @@ func NewRelay(config Config) *Relay {
 		upstreamMatrix = append(upstreamMatrix, us)
 	}
 
-	upstreamMatrix = append(upstreamMatrix, CreateDefaultTraditionalUpstream())
+	upstreamMatrix = append(upstreamMatrix, CreateDefaultDnsOverHttpsUpstream())
 
 	return &Relay{
 		upstreamMatrix: upstreamMatrix,

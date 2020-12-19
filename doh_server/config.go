@@ -38,10 +38,16 @@ type Config struct {
 }
 
 type UpstreamConfig struct {
-	NameRegex     string `yaml:"name_regex"`
-	UseDOH        bool   `yaml:"use_doh" default:"true"`
-	Address       string `yaml:"address"`
-	TimeoutMillis int64  `yaml:"timeout" default:"5000"`
+	NameRegex           string              `yaml:"name_regex"`
+	UseDOH              bool                `yaml:"use_doh" default:"true"`
+	Address             string              `yaml:"address"`
+	TimeoutMillis       int64               `yaml:"timeout" default:"5000"`
+	HttpTransportConfig HttpTransportConfig `yaml:"http_transport_config" default:"{}"`
+}
+
+type HttpTransportConfig struct {
+	MaxConnsPerHost       int   `yaml:"max_conns_per_host" default:"3"`
+	IdleConnTimeoutMillis int64 `yaml:"idle_conn_timeout_millis" default:"30000"`
 }
 
 func parseConfigFile(filepath string) (*Config, error) {
