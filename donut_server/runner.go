@@ -23,7 +23,7 @@ func Run(configPath string) {
 		syscall.SIGINT,
 		syscall.SIGQUIT)
 
-	dohServer, err := CreateDOHServer(*config)
+	dohServer, err := CreateDOHServer(config)
 	if err != nil {
 		log.Fatalf("coud not configure server: %v", err)
 	}

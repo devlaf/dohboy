@@ -37,7 +37,7 @@ func (relay *Relay) ResolveDNSQuery(requestMsg *dns.Msg) (*dns.Msg, error) {
 	return nil, errors.New("No matched upstreams found.")
 }
 
-func NewRelay(config Config) *Relay {
+func NewRelay(config *Config) *Relay {
 	upstreamMatrix := make([]Upstream, 0, len(config.Upstream.Custom)+1)
 
 	for _, config := range config.Upstream.Custom {

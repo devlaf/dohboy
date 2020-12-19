@@ -11,14 +11,14 @@ import (
 
 type DOHServer struct {
 	HttpServer *http.Server
-	Config     Config
+	Config     *Config
 }
 
-func useTLS(config Config) bool {
+func useTLS(config *Config) bool {
 	return config.Server.TLSCertPath != ""
 }
 
-func CreateDOHServer(config Config) (*DOHServer, error) {
+func CreateDOHServer(config *Config) (*DOHServer, error) {
 	router := CreateRouter(config)
 
 	tlsConfig := &tls.Config{}

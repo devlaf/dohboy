@@ -95,7 +95,7 @@ func (router *Router) ServeHTTP(response http.ResponseWriter, request *http.Requ
 	response.Write(responseWireFormat)
 }
 
-func CreateRouter(config Config) *http.ServeMux {
+func CreateRouter(config *Config) *http.ServeMux {
 	rateLimiter := NewRateLimiter(config)
 	relay := NewRelay(config)
 

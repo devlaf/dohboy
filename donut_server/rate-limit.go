@@ -68,7 +68,7 @@ func toSet(commaSeparated string) set {
 	return *retval
 }
 
-func NewRateLimiter(config Config) RateLimiter {
+func NewRateLimiter(config *Config) RateLimiter {
 
 	if config.IPRateLimit.Enabled == false {
 		return &NoopRateLimiter{}
