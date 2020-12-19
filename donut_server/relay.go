@@ -8,11 +8,11 @@ import (
 	"github.com/miekg/dns"
 )
 
-type Relay struct {
-	upstreamMatrix []Upstream
+type relay struct {
+	upstreamMatrix []upstream
 }
 
-func (relay *Relay) ResolveDNSQuery(requestMsg *dns.Msg) (*dns.Msg, error) {
+func (relay *relay) resolveDNSQuery(requestMsg *dns.Msg) (*dns.Msg, error) {
 	if len(requestMsg.Question) != 1 {
 		responseMsg := dns.Msg{}
 		return responseMsg.SetRcodeFormatError(requestMsg), nil
@@ -28,7 +28,7 @@ func (relay *Relay) ResolveDNSQuery(requestMsg *dns.Msg) (*dns.Msg, error) {
 	}
 
 	for _, upstream := range relay.upstreamMatrix {
-		matched, resp, err := upstream.ResolveIfMatched(requestMsg)
+		matched, resp, err := upstream.resolveIfMatched(requestMsg)
 		if matched {
 			return resp, err
 		}
@@ -37,11 +37,11 @@ func (relay *Relay) ResolveDNSQuery(requestMsg *dns.Msg) (*dns.Msg, error) {
 	return nil, errors.New("No matched upstreams found.")
 }
 
-func NewRelay(config *Config) *Relay {
-	upstreamMatrix := make([]Upstream, 0, len(config.Upstream.Custom)+1)
+func newRelay(config *Config) *relay {
+	upstreamMatrix := make([]upstream, 0, len(config.Upstream.Custom)+1)
 
 	for _, config := range config.Upstream.Custom {
-		us, err := CreateUpstream(config)
+		us, err := createUpstream(config)
 		if err != nil {
 			log.Printf("ERR: Configured upstream for pattern [%v] is bad. The upstream won't be included.", config.NameRegex)
 			log.Printf("ERR: %v", err)
@@ -50,9 +50,9 @@ func NewRelay(config *Config) *Relay {
 		upstreamMatrix = append(upstreamMatrix, us)
 	}
 
-	upstreamMatrix = append(upstreamMatrix, CreateDefaultDnsOverHttpsUpstream())
+	upstreamMatrix = append(upstreamMatrix, createDefaultDnsOverHttpsUpstream())
 
-	return &Relay{
+	return &relay{
 		upstreamMatrix: upstreamMatrix,
 	}
 }

@@ -13,11 +13,11 @@ import (
 	"github.com/miekg/dns"
 )
 
-type Upstream interface {
-	ResolveIfMatched(dnsQuery *dns.Msg) (bool, *dns.Msg, error) // (was_matched, resp_msg_if_matched, err)
+type upstream interface {
+	resolveIfMatched(dnsQuery *dns.Msg) (bool, *dns.Msg, error) // (was_matched, resp_msg_if_matched, err)
 }
 
-func CreateUpstream(config UpstreamConfig) (Upstream, error) {
+func createUpstream(config UpstreamConfig) (upstream, error) {
 	timeout := time.Duration(config.TimeoutMillis) * time.Millisecond
 
 	regex, err := regexp.Compile(config.NameRegex)
@@ -32,36 +32,36 @@ func CreateUpstream(config UpstreamConfig) (Upstream, error) {
 	}
 }
 
-func CreateDefaultTraditionalUpstream() Upstream {
+func createDefaultTraditionalUpstream() upstream {
 	defaultUpstreamConfig := UpstreamConfig{
 		NameRegex:     ".*",
 		UseDOH:        false,
 		Address:       "8.8.8.8:53",
 		TimeoutMillis: 5000,
 	}
-	defaultUpstream, _ := CreateUpstream(defaultUpstreamConfig)
+	defaultUpstream, _ := createUpstream(defaultUpstreamConfig)
 	return defaultUpstream
 }
 
-func CreateDefaultDnsOverHttpsUpstream() Upstream {
+func createDefaultDnsOverHttpsUpstream() upstream {
 	defaultUpstreamConfig := UpstreamConfig{
 		NameRegex:     ".*",
 		UseDOH:        true,
 		Address:       "https://dns.google/dns-query",
 		TimeoutMillis: 5000,
 	}
-	defaultUpstream, _ := CreateUpstream(defaultUpstreamConfig)
+	defaultUpstream, _ := createUpstream(defaultUpstreamConfig)
 	return defaultUpstream
 }
 
-type TraditionalUpstream struct {
+type traditionalUpstream struct {
 	regex     *regexp.Regexp
 	address   string
 	tcpClient *dns.Client
 	udpClient *dns.Client
 }
 
-func createTraditionalUpstream(regex *regexp.Regexp, address string, timeout time.Duration) Upstream {
+func createTraditionalUpstream(regex *regexp.Regexp, address string, timeout time.Duration) upstream {
 	tcpClient := &dns.Client{
 		Net:     "tcp",
 		Timeout: timeout,
@@ -72,7 +72,7 @@ func createTraditionalUpstream(regex *regexp.Regexp, address string, timeout tim
 		Timeout: timeout,
 	}
 
-	return &TraditionalUpstream{
+	return &traditionalUpstream{
 		regex:     regex,
 		address:   address,
 		tcpClient: tcpClient,
@@ -80,7 +80,7 @@ func createTraditionalUpstream(regex *regexp.Regexp, address string, timeout tim
 	}
 }
 
-func (upstream *TraditionalUpstream) ResolveIfMatched(dnsQuery *dns.Msg) (bool, *dns.Msg, error) {
+func (upstream *traditionalUpstream) resolveIfMatched(dnsQuery *dns.Msg) (bool, *dns.Msg, error) {
 	if !upstream.regex.MatchString(dnsQuery.Question[0].Name) {
 		return false, nil, nil
 	}
@@ -98,13 +98,13 @@ func (upstream *TraditionalUpstream) ResolveIfMatched(dnsQuery *dns.Msg) (bool, 
 	return true, tcpResp, err
 }
 
-type DnsOverHttpsUpstream struct {
+type dnsOverHttpsUpstream struct {
 	regex      *regexp.Regexp
 	address    string
 	httpClient *http.Client
 }
 
-func createDnsOverHttpsUpstream(regex *regexp.Regexp, address string, timeout time.Duration, transportConfig HttpTransportConfig) (Upstream, error) {
+func createDnsOverHttpsUpstream(regex *regexp.Regexp, address string, timeout time.Duration, transportConfig HttpTransportConfig) (upstream, error) {
 	validUrl, err := url.ParseRequestURI(address)
 	if err != nil {
 		return nil, err
@@ -124,14 +124,14 @@ func createDnsOverHttpsUpstream(regex *regexp.Regexp, address string, timeout ti
 		Timeout:   timeout,
 	}
 
-	return &DnsOverHttpsUpstream{
+	return &dnsOverHttpsUpstream{
 		regex:      regex,
 		address:    address,
 		httpClient: httpClient,
 	}, nil
 }
 
-func (upstream *DnsOverHttpsUpstream) ResolveIfMatched(dnsQuery *dns.Msg) (bool, *dns.Msg, error) {
+func (upstream *dnsOverHttpsUpstream) resolveIfMatched(dnsQuery *dns.Msg) (bool, *dns.Msg, error) {
 	if !upstream.regex.MatchString(dnsQuery.Question[0].Name) {
 		return false, nil, nil
 	}

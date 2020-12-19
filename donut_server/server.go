@@ -19,7 +19,7 @@ func useTLS(config *Config) bool {
 }
 
 func CreateDOHServer(config *Config) (*DOHServer, error) {
-	router := CreateRouter(config)
+	router := createRouter(config)
 
 	tlsConfig := &tls.Config{}
 	if useTLS(config) {

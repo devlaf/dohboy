@@ -7,22 +7,22 @@ import (
 	"golang.org/x/time/rate"
 )
 
-type RateLimiter interface {
-	Please(ip string, userKey string) bool
-	GetIP(request *http.Request) string
+type rateLimiter interface {
+	please(ip string, userKey string) bool
+	getIP(request *http.Request) string
 }
 
-type NoopRateLimiter struct{}
+type noopRateLimiter struct{}
 
-func (n *NoopRateLimiter) Please(a string, b string) bool {
+func (n *noopRateLimiter) please(a string, b string) bool {
 	return true
 }
 
-func (n *NoopRateLimiter) GetIP(request *http.Request) string {
+func (n *noopRateLimiter) getIP(request *http.Request) string {
 	return ""
 }
 
-type IPRateLimiter struct {
+type iPRateLimiter struct {
 	userKeyWhitelist     set
 	ipLimits             map[string]*rate.Limiter
 	recoverXTokensPerSec rate.Limit
@@ -30,7 +30,7 @@ type IPRateLimiter struct {
 	allowIPFromHeader    bool
 }
 
-func (rl *IPRateLimiter) Please(ip string, userKey string) bool {
+func (rl *iPRateLimiter) please(ip string, userKey string) bool {
 	if rl.userKeyWhitelist.Contains(userKey) {
 		return true
 	}
@@ -46,7 +46,7 @@ func (rl *IPRateLimiter) Please(ip string, userKey string) bool {
 	return limiter.Allow()
 }
 
-func (rl *IPRateLimiter) GetIP(request *http.Request) string {
+func (rl *iPRateLimiter) getIP(request *http.Request) string {
 	if rl.allowIPFromHeader {
 		if forwarded := request.Header.Get("X-FORWARDED-FOR"); forwarded != "" {
 			return forwarded
@@ -68,13 +68,13 @@ func toSet(commaSeparated string) set {
 	return *retval
 }
 
-func NewRateLimiter(config *Config) RateLimiter {
+func newRateLimiter(config *Config) rateLimiter {
 
 	if config.IPRateLimit.Enabled == false {
-		return &NoopRateLimiter{}
+		return &noopRateLimiter{}
 	}
 
-	return &IPRateLimiter{
+	return &iPRateLimiter{
 		userKeyWhitelist:     toSet(config.IPRateLimit.KeyWhitelist),
 		ipLimits:             make(map[string]*rate.Limiter),
 		recoverXTokensPerSec: rate.Limit(config.IPRateLimit.RecoverXTokensPerSec),

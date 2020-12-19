@@ -10,9 +10,9 @@ import (
 	"github.com/miekg/dns"
 )
 
-type Router struct {
-	rateLimiter    RateLimiter
-	relay          *Relay
+type router struct {
+	rateLimiter    rateLimiter
+	relay          *relay
 	terseResponses bool
 }
 
@@ -44,7 +44,7 @@ func extractDNSMessage(request *http.Request) (*dns.Msg, error) {
 	return retval, retval.Unpack(wireFormat)
 }
 
-func (router *Router) ServeHTTP(response http.ResponseWriter, request *http.Request) {
+func (router *router) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 	httpError := func(httpStatusCode int, err error) {
 		if !router.terseResponses && err != nil {
 			http.Error(response, fmt.Sprintf("%v: %v", http.StatusText(httpStatusCode), err), httpStatusCode)
@@ -58,7 +58,7 @@ func (router *Router) ServeHTTP(response http.ResponseWriter, request *http.Requ
 		return
 	}
 
-	if !router.rateLimiter.Please(router.rateLimiter.GetIP(request), request.URL.Query().Get("token")) {
+	if !router.rateLimiter.please(router.rateLimiter.getIP(request), request.URL.Query().Get("token")) {
 		httpError(http.StatusTooManyRequests, nil)
 		return
 	}
@@ -79,7 +79,7 @@ func (router *Router) ServeHTTP(response http.ResponseWriter, request *http.Requ
 		return
 	}
 
-	responseMsg, err := router.relay.ResolveDNSQuery(requestMsg)
+	responseMsg, err := router.relay.resolveDNSQuery(requestMsg)
 	if err != nil {
 		httpError(http.StatusInternalServerError, err)
 		return
@@ -95,11 +95,11 @@ func (router *Router) ServeHTTP(response http.ResponseWriter, request *http.Requ
 	response.Write(responseWireFormat)
 }
 
-func CreateRouter(config *Config) *http.ServeMux {
-	rateLimiter := NewRateLimiter(config)
-	relay := NewRelay(config)
+func createRouter(config *Config) *http.ServeMux {
+	rateLimiter := newRateLimiter(config)
+	relay := newRelay(config)
 
-	router := &Router{
+	router := &router{
 		rateLimiter:    rateLimiter,
 		relay:          relay,
 		terseResponses: config.Development.TerseResponses,
