@@ -1,4 +1,4 @@
-package doh
+package donut
 
 type set struct {
 	store map[string]struct{}

@@ -7,10 +7,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	"donut/doh_server"
+	"donut/donut_server"
 )
 
-func run(config doh.Config) {
+func run(config donut.Config) {
 	onSignalInterrupt := make(chan os.Signal, 1)
 
 	signal.Notify(
@@ -20,7 +20,7 @@ func run(config doh.Config) {
 		syscall.SIGINT,
 		syscall.SIGQUIT)
 
-	dohServer, err := doh.CreateDOHServer(config)
+	dohServer, err := donut.CreateDOHServer(config)
 	if err != nil {
 		log.Fatalf("coud not configure server: %v", err)
 	}
@@ -51,7 +51,7 @@ func main() {
 	flag.StringVar(&configPath, "config", "./config.yml", "path to config file")
 	flag.Parse()
 
-	config, err := doh.FetchConfig(configPath)
+	config, err := donut.FetchConfig(configPath)
 	if err != nil {
 		log.Fatal(err)
 	}
