@@ -3,6 +3,7 @@ package donut
 import (
 	"net/http"
 	"strings"
+	"sync"
 
 	"golang.org/x/time/rate"
 )
@@ -25,6 +26,7 @@ func (n *noopRateLimiter) getIP(request *http.Request) string {
 type iPRateLimiter struct {
 	userKeyWhitelist     set
 	ipLimits             map[string]*rate.Limiter
+	ipLimitsMu           sync.RWMutex
 	recoverXTokensPerSec rate.Limit
 	maxTokens            int
 	allowIPFromHeader    bool
@@ -35,12 +37,15 @@ func (rl *iPRateLimiter) please(ip string, userKey string) bool {
 		return true
 	}
 
+	rl.ipLimitsMu.RLock()
 	limiter, exists := rl.ipLimits[ip]
+	rl.ipLimitsMu.RUnlock()
 
 	if !exists {
-		// don't care about the RC here
-		rl.ipLimits[ip] = rate.NewLimiter(rl.recoverXTokensPerSec, rl.maxTokens)
-		return true
+		limiter = rate.NewLimiter(rl.recoverXTokensPerSec, rl.maxTokens)
+		rl.ipLimitsMu.Lock()
+		rl.ipLimits[ip] = limiter
+		rl.ipLimitsMu.Unlock()
 	}
 
 	return limiter.Allow()
@@ -59,7 +64,7 @@ func (rl *iPRateLimiter) getIP(request *http.Request) string {
 }
 
 func toSet(commaSeparated string) set {
-	retval := NewSet()
+	retval := newSet()
 
 	for _, key := range strings.Split(commaSeparated, ",") {
 		retval.Add(strings.TrimSpace(key))

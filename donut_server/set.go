@@ -1,24 +1,35 @@
 package donut
 
+import (
+	"sync"
+)
+
 type set struct {
-	store map[string]struct{}
+	data map[string]struct{}
+	sync.RWMutex
 }
 
-func NewSet() *set {
+func newSet() *set {
 	return &set{
-		store: make(map[string]struct{}),
+		data: make(map[string]struct{}),
 	}
 }
 
-func (s *set) Add(val string) {
-	s.store[val] = struct{}{}
+func (set *set) Add(val string) {
+	set.Lock()
+	set.data[val] = struct{}{}
+	set.Unlock()
 }
 
-func (s *set) Remove(val string) {
-	delete(s.store, val)
+func (set *set) Remove(val string) {
+	set.Lock()
+	delete(set.data, val)
+	set.Unlock()
 }
 
-func (s *set) Contains(val string) bool {
-	_, c := s.store[val]
+func (set *set) Contains(val string) bool {
+	set.RLock()
+	_, c := set.data[val]
+	set.RUnlock()
 	return c
 }
