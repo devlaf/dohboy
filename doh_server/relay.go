@@ -9,7 +9,7 @@ import (
 )
 
 type Relay struct {
-	upstreamMatrix []*Upstream
+	upstreamMatrix []Upstream
 }
 
 func (relay *Relay) ResolveDNSQuery(requestMsg *dns.Msg) (*dns.Msg, error) {
@@ -28,12 +28,9 @@ func (relay *Relay) ResolveDNSQuery(requestMsg *dns.Msg) (*dns.Msg, error) {
 	}
 
 	for _, upstream := range relay.upstreamMatrix {
-		resp, err := upstream.ResolveIfMatched(requestMsg)
-		if err != nil {
-			return nil, err
-		}
-		if resp != nil {
-			return resp, nil
+		matched, resp, err := upstream.ResolveIfMatched(requestMsg)
+		if matched {
+			return resp, err
 		}
 	}
 
@@ -41,7 +38,7 @@ func (relay *Relay) ResolveDNSQuery(requestMsg *dns.Msg) (*dns.Msg, error) {
 }
 
 func NewRelay(config Config) *Relay {
-	upstreamMatrix := make([]*Upstream, 0, len(config.Upstream.Custom)+1)
+	upstreamMatrix := make([]Upstream, 0, len(config.Upstream.Custom)+1)
 
 	for _, config := range config.Upstream.Custom {
 		us, err := CreateUpstream(config)
@@ -53,7 +50,7 @@ func NewRelay(config Config) *Relay {
 		upstreamMatrix = append(upstreamMatrix, us)
 	}
 
-	upstreamMatrix = append(upstreamMatrix, CreateDefaultUpstream())
+	upstreamMatrix = append(upstreamMatrix, CreateDefaultTraditionalUpstream())
 
 	return &Relay{
 		upstreamMatrix: upstreamMatrix,
