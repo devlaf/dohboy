@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"os"
 	"os/signal"
@@ -46,7 +47,11 @@ func run(config doh.Config) {
 }
 
 func main() {
-	config, err := doh.FetchConfig()
+	var configPath string
+	flag.StringVar(&configPath, "config", "./config.yml", "path to config file")
+	flag.Parse()
+
+	config, err := doh.FetchConfig(configPath)
 	if err != nil {
 		log.Fatal(err)
 	}

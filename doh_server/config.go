@@ -1,7 +1,6 @@
 package doh
 
 import (
-	"flag"
 	"fmt"
 	"os"
 
@@ -57,7 +56,7 @@ func parseConfigFile(filepath string) (*Config, error) {
 
 	file, err := os.Open(filepath)
 	if err != nil {
-		return nil, err
+		return config, nil
 	}
 	defer file.Close()
 
@@ -98,13 +97,8 @@ func validateConfig(config *Config) error {
 	return nil
 }
 
-func FetchConfig() (*Config, error) {
-	var configPath string
-
-	flag.StringVar(&configPath, "config", "./config.yml", "path to config file")
-	flag.Parse()
-
-	cfg, err := parseConfigFile(configPath)
+func FetchConfig(filepath string) (*Config, error) {
+	cfg, err := parseConfigFile(filepath)
 	if err != nil {
 		return nil, err
 	}
