@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"donut/donut_server"
+	"donut/test_client"
 )
 
 func getServerConfigPath() string {
@@ -30,7 +31,7 @@ func main() {
 	if operation == "server" {
 		donut.Run(getServerConfigPath())
 	} else if operation == "test" {
-		log.Fatal("lol, what tests?")
+		test.Run()
 	} else {
 		log.Fatalf("unknown operation: %v", operation)
 	}
