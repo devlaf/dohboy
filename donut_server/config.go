@@ -54,9 +54,13 @@ func parseConfigFile(filepath string) (*Config, error) {
 	config := &Config{}
 	defaults.Set(config)
 
+	if filepath == "" {
+		return config, nil
+	}
+
 	file, err := os.Open(filepath)
 	if err != nil {
-		return config, nil
+		return nil, err
 	}
 	defer file.Close()
 
