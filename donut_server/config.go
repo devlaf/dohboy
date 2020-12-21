@@ -32,8 +32,12 @@ type Config struct {
 		TerseResponses bool `yaml:"terse_responses" default:"true"`
 	} `yaml:"development"`
 	Upstream struct {
-		Custom []UpstreamConfig `yaml:"custom_upstream" default:"[]"`
+		Custom                    []UpstreamConfig `yaml:"custom_upstream" default:"[]"`
+		MaximumTTLOverrideSeconds uint32           `yaml:"maximum_ttl_override_seconds" default:"0"`
 	} `yaml:"upstream"`
+	Caching struct {
+		EnableHTTPCaching bool `yaml:"enable_http_caching" default:"true"`
+	} `yaml:"caching"`
 }
 
 type UpstreamConfig struct {

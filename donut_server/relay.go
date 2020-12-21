@@ -2,34 +2,36 @@ package donut
 
 import (
 	"errors"
-	"fmt"
 	"log"
 
 	"github.com/miekg/dns"
 )
 
 type relay struct {
-	upstreamMatrix []upstream
+	upstreamMatrix     []upstream
+	maximumTTLOverride uint32
 }
 
 func (relay *relay) resolveDNSQuery(requestMsg *dns.Msg) (*dns.Msg, error) {
 	if len(requestMsg.Question) != 1 {
+		// Format technically allows this (RFC1305) but in practice nobody seems to
+		// support it, including probably anything upstream of this relay. Specifics
+		// required to implement multiple questions are not universally defined.
 		responseMsg := dns.Msg{}
 		return responseMsg.SetRcodeFormatError(requestMsg), nil
 	}
 
-	// RFC8482
-	if requestMsg.Question[0].Qtype == dns.TypeANY {
-		responseMsg := dns.Msg{}
-		responseMsg.SetReply(requestMsg)
-		hinfo, _ := dns.NewRR(fmt.Sprintf("%v 3600 IN HINFO \"RFC8482\" ", requestMsg.Question[0].Name))
-		responseMsg.Answer = append(responseMsg.Answer, hinfo)
-		return &responseMsg, nil
+	if rfc8482_canRejectForTypeAny(requestMsg) {
+		return rfc8482_createResponse(requestMsg)
 	}
 
 	for _, upstream := range relay.upstreamMatrix {
 		matched, resp, err := upstream.resolveIfMatched(requestMsg)
 		if matched {
+			if err != nil && relay.maximumTTLOverride != 0 {
+				overrideAnyLargeTTL(resp, relay.maximumTTLOverride)
+			}
+
 			return resp, err
 		}
 	}
@@ -53,6 +55,7 @@ func newRelay(config *Config) *relay {
 	upstreamMatrix = append(upstreamMatrix, createDefaultDnsOverHttpsUpstream())
 
 	return &relay{
-		upstreamMatrix: upstreamMatrix,
+		upstreamMatrix:     upstreamMatrix,
+		maximumTTLOverride: config.Upstream.MaximumTTLOverrideSeconds,
 	}
 }

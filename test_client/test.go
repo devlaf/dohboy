@@ -57,7 +57,7 @@ func checkResponse(testname string, resp *http.Response) {
 		return
 	}
 
-	log.Printf("Response [%v]: %v", testname, dnsResp.Answer[0])
+	log.Printf("Response [%v]: %v", testname, dnsResp)
 }
 
 func Run() {

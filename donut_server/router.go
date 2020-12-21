@@ -11,9 +11,10 @@ import (
 )
 
 type router struct {
-	rateLimiter    rateLimiter
-	relay          *relay
-	terseResponses bool
+	rateLimiter       rateLimiter
+	relay             *relay
+	terseResponses    bool
+	enableHttpCaching bool
 }
 
 func extractDNSWireFormat(request *http.Request) ([]byte, error) {
@@ -91,6 +92,13 @@ func (router *router) ServeHTTP(response http.ResponseWriter, request *http.Requ
 		return
 	}
 
+	if router.enableHttpCaching {
+		ttl := getOverallTTL(responseMsg)
+		if ttl != 0 {
+			response.Header().Set("Cache-Control", fmt.Sprintf("max-age=%v", ttl))
+		}
+	}
+
 	response.Header().Set("Content-Type", "application/dns-message")
 	response.Write(responseWireFormat)
 }
@@ -100,9 +108,10 @@ func createRouter(config *Config) *http.ServeMux {
 	relay := newRelay(config)
 
 	router := &router{
-		rateLimiter:    rateLimiter,
-		relay:          relay,
-		terseResponses: config.Development.TerseResponses,
+		rateLimiter:       rateLimiter,
+		relay:             relay,
+		terseResponses:    config.Development.TerseResponses,
+		enableHttpCaching: config.Caching.EnableHTTPCaching,
 	}
 
 	mux := http.NewServeMux()
