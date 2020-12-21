@@ -14,7 +14,7 @@ This is currently a bit of a work-in-progress and not especially well-tested, bu
 Configuration is done through a yaml file, the semantics of which are defined in [config.go](server/config.go).
 
 #### Notes:
-- Providing a TLSCertPath and TLSKeyPath will configure the server for HTTPS. If the plan is to run dohboy behind a reverse proxy and do SSL offloading there, leaving them empty will cause it serve up everything over http
+- Providing a `TLSCertPath` and `TLSKeyPath` will configure the server for HTTPS. If the plan is to run dohboy behind a reverse proxy and do SSL offloading there, leaving them empty will cause it serve up everything over http
 - In specifying custom upstreams, there is a `NameRegex` field. For an incoming request, dohboy will compare the DNS question name against each regex pattern in the order that the upstreams have been configured, and will use the first matching upstream to resolve the msg. That way you can shunt off queries for *.local for instance to one target and everything else to another.
 
 ### Future Work
