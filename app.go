@@ -9,8 +9,10 @@ import (
 	"dohboy/test-client"
 )
 
-func getServerConfigPath() string {
+func main() {
+	var operation string
 	var configPath string
+	flag.StringVar(&operation, "op", "server", "operation: [sever|test]")
 	flag.StringVar(&configPath, "config", "", "path to config file")
 	flag.Parse()
 
@@ -20,16 +22,8 @@ func getServerConfigPath() string {
 		}
 	}
 
-	return configPath
-}
-
-func main() {
-	var operation string
-	flag.StringVar(&operation, "op", "server", "operation: [sever|test]")
-	flag.Parse()
-
 	if operation == "server" {
-		dohboy.Run(getServerConfigPath())
+		dohboy.Run(configPath)
 	} else if operation == "test" {
 		test.Run()
 	} else {
