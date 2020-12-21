@@ -5,8 +5,8 @@ import (
 	"log"
 	"os"
 
-	"dohboy/dohboy_server"
-	"dohboy/test_client"
+	"dohboy/server"
+	"dohboy/test-client"
 )
 
 func getServerConfigPath() string {
