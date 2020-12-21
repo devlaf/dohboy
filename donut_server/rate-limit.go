@@ -54,27 +54,19 @@ func (rl *iPRateLimiter) please(ip string, userKey string) bool {
 
 func (rl *iPRateLimiter) getIP(request *http.Request) string {
 	if rl.allowIPFromHeader {
-		if forwarded := getIPFromHeader(request, "X-FORWARDED-FOR"); forwarded != "" {
-			return forwarded
-		}
-		if real := getIPFromHeader(request, "X-Real-IP"); real != "" {
-			return real
+		for _, key := range []string{"X-Forwarded-For", "X-Real-Ip"} {
+			if val := request.Header.Get(key); val != "" {
+				addrs := strings.Split(strings.Trim(val, ","), ",")
+				last := addrs[len(addrs)-1]
+				if ip := net.ParseIP(last); ip != nil {
+					return ip.String()
+				}
+			}
 		}
 	}
 
 	if ip, _, err := net.SplitHostPort(request.RemoteAddr); err == nil {
 		return ip
-	}
-	return ""
-}
-
-func getIPFromHeader(request *http.Request, key string) string {
-	if val := request.Header.Get(key); val != "" {
-		addrs := strings.Split(strings.Trim(val, ","), ",")
-		last := addrs[len(addrs)-1]
-		if ip := net.ParseIP(last); ip != nil {
-			return ip.String()
-		}
 	}
 	return ""
 }
