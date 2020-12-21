@@ -1,4 +1,4 @@
-package donut
+package dohboy
 
 import (
 	"log"
@@ -30,10 +30,10 @@ func Run(configPath string) {
 
 	go func() {
 		if err := dohServer.ListenAndBlock(); err != nil {
-			log.Fatalf("doh server error: %v", err)
+			log.Fatalf("dohboy server error: %v", err)
 		}
 	}()
-	log.Printf("doh server started.")
+	log.Printf("dohboy server started.")
 
 	<-onSignalInterrupt
 	log.Print("shutting down...\n")

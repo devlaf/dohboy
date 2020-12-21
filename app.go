@@ -5,8 +5,8 @@ import (
 	"log"
 	"os"
 
-	"donut/donut_server"
-	"donut/test_client"
+	"dohboy/dohboy_server"
+	"dohboy/test_client"
 )
 
 func getServerConfigPath() string {
@@ -29,7 +29,7 @@ func main() {
 	flag.Parse()
 
 	if operation == "server" {
-		donut.Run(getServerConfigPath())
+		dohboy.Run(getServerConfigPath())
 	} else if operation == "test" {
 		test.Run()
 	} else {

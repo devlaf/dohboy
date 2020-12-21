@@ -1,4 +1,4 @@
-module donut
+module dohboy
 
 go 1.15
 
