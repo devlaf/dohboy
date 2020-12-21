@@ -1,6 +1,7 @@
 package donut
 
 import (
+	"net"
 	"net/http"
 	"strings"
 	"sync"
@@ -53,21 +54,38 @@ func (rl *iPRateLimiter) please(ip string, userKey string) bool {
 
 func (rl *iPRateLimiter) getIP(request *http.Request) string {
 	if rl.allowIPFromHeader {
-		if forwarded := request.Header.Get("X-FORWARDED-FOR"); forwarded != "" {
+		if forwarded := getIPFromHeader(request, "X-FORWARDED-FOR"); forwarded != "" {
 			return forwarded
 		}
-		if real := request.Header.Get("X-Real-IP"); real != "" {
+		if real := getIPFromHeader(request, "X-Real-IP"); real != "" {
 			return real
 		}
 	}
-	return request.RemoteAddr
+
+	if ip, _, err := net.SplitHostPort(request.RemoteAddr); err == nil {
+		return ip
+	}
+	return ""
+}
+
+func getIPFromHeader(request *http.Request, key string) string {
+	if val := request.Header.Get(key); val != "" {
+		addrs := strings.Split(strings.Trim(val, ","), ",")
+		last := addrs[len(addrs)-1]
+		if ip := net.ParseIP(last); ip != nil {
+			return ip.String()
+		}
+	}
+	return ""
 }
 
 func toSet(commaSeparated string) set {
 	retval := newSet()
 
-	for _, key := range strings.Split(commaSeparated, ",") {
-		retval.Add(strings.TrimSpace(key))
+	if commaSeparated != "" {
+		for _, key := range strings.Split(commaSeparated, ",") {
+			retval.Add(strings.TrimSpace(key))
+		}
 	}
 
 	return *retval
